@@ -83,7 +83,7 @@ jobs:
 
       - name: Create fresh install of the app
         run: |
-          REPO="https://github.com/aumthakkar/nov26-py9app.git"
+          REPO="https://github.com/aum-thakkar/nov26-py9app.git"
 
           # If not existing, add repo
           arogcd app list ${REPO} || argocd repo add ${REPO}
