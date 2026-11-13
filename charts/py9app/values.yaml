@@ -1,0 +1,29 @@
+replicaCount: 1
+image:
+  repository: aumthakkar/py9app
+  pullPolicy: IfNotPresent
+  tag: "2d7dc9"
+serviceAccount:
+  create: false
+service:
+  type: ClusterIP
+  port: 5000
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations: {}
+  hosts:
+    - host: python-app.test.com
+      paths:
+        - path: /
+          pathType: Prefix
+livenessProbe:
+  httpGet:
+    path: /api/v1/healthz
+    port: http
+readinessProbe:
+  httpGet:
+    path: /api/v1/healthz
+    port: http
+autoscaling:
+  enabled: false
