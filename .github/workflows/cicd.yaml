@@ -1,0 +1,134 @@
+name: Platform Engg CICD Pipeline
+on:
+  push:
+    branches:
+      - main
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v5
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Shorten Commit hash
+        shell: bash
+        run: |
+          echo "COMMIT_ID=${GITHUB_SHA::6}" >> ${GITHUB_ENV}
+
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: aumthakkar/py9app:v1
+
+    outputs:
+      commit_id: ${{ env.COMMIT_ID }}
+
+  cd:
+    needs: ci
+    runs-on: orbstack-runner
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v7
+
+      - name: install wget utility
+        run: |
+          sudo apt update && sudo apt install wget -y
+          wget --version
+
+      - name: Download yq utility
+        run: |
+          VERSION=v4.2.0
+          PLATFORM=linux_arm64
+
+          sudo wget https://github.com/mikefarah/yq/releases/download/${VERSION}/yq_${PLATFORM} -O /usr/local/bin/yq 
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Update the image tag
+        run: |
+          yq e -i '.image.tag = "${{ needs.ci.outputs.commit_id }}"' charts/py9app/values.yaml
+
+      - name: Commit the change with latest image tag
+        uses: EndBug/add-and-commit@v10
+        with:
+          default_author: github_actions
+          message: "Commit from GitHub Actions (Platform Engg CICD Pipeline)"
+          add: "charts/py9app/values.yaml"
+          pull: "--rebase"
+
+      - name: Download ArgoCD
+        run: |
+          VERSION=$(curl -L -s https://raw.githubusercontent.com/argoproj/argo-cd/stable/VERSION)
+          curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/download/v$VERSION/argocd-linux-amd64
+          sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
+          sudo chmod +x /usr/local/bin/argocd
+          rm argocd-linux-amd64
+
+      - name: Login to ArgoCD
+        run: |
+          argocd login argocd-server.argocd \
+            --username admin \
+            --password ${{ secrets.ARGOCD_PASSWORD }} \
+            --insecure \
+            --grpc-web
+
+      - name: Create fresh install of the app
+        run: |
+          REPO="https://github.com/aumthakkar/nov26-py9app.git"
+
+          # If not existing, add repo
+          arogcd app list ${REPO} || argocd repo add ${REPO}
+
+          # Check to see if the previous version of the app exists
+          if argocd app get py9app > /dev/null 2>&1; then
+            # Delete app for a fresh install
+            echo "Deleting previous version of the app for a fresh install"
+            argocd app delete py9app --cascade
+              
+
+            # Wait for the app to delete fully
+            while argocd app delete py9app; do
+              echo "Deleting the previous version of the app for a new fresh install"
+              sleep 2
+            done
+            echo "Previous version of the app - py9app deleted. Installing a fresh new install of the app"
+
+          fi
+
+            # Create the app 
+            argocd app create py9app \
+              --dest-namespace dev \
+              --dest-server https://kubernetes.default.svc \
+              --path charts/py9app \
+              --repo ${REPO} \
+              --revision main \
+              --sync-option CreateNamespace=true \
+              --sync-policy manual
+
+            argocd app sync py9app 
+            argocd app wait --timeout 120
+
+
+
+
+          
+      
+
+      
+
+
+
