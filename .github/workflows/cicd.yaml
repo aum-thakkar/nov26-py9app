@@ -64,11 +64,6 @@ jobs:
 
       - name: Commit the change with latest image tag
         uses: EndBug/add-and-commit@v10
-        with:
-          default_author: github_actions
-          message: "Commit from GitHub Actions (Platform Engg CICD Pipeline)"
-          add: "charts/py9app/values.yaml"
-          pull: "--rebase"
 
       - name: Download ArgoCD
         run: |
@@ -81,7 +76,7 @@ jobs:
       - name: Login to ArgoCD
         run: |
           argocd login argocd-server.argocd \
-            --username admin \
+            --username ${{ secrets.ARGOCD_USERNAME }} \
             --password ${{ secrets.ARGOCD_PASSWORD }} \
             --insecure \
             --grpc-web
@@ -101,7 +96,7 @@ jobs:
               
 
             # Wait for the app to delete fully
-            while argocd app delete py9app; do
+            while argocd app delete py9app > /dev/null 2>&1; do
               echo "Deleting the previous version of the app for a new fresh install"
               sleep 2
             done
