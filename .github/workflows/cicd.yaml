@@ -33,7 +33,7 @@ jobs:
         with:
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: aumthakkar/py9app:v1
+          tags: aumthakkar/py9app:${{ env.COMMIT_ID }}
 
     outputs:
       commit_id: ${{ env.COMMIT_ID }}
