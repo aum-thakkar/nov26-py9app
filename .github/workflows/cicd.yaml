@@ -115,7 +115,7 @@ jobs:
               --sync-policy manual
 
             argocd app sync py9app 
-            argocd app wait --timeout 120
+            argocd app wait py9app --timeout 120
 
 
 
