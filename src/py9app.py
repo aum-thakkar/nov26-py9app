@@ -11,7 +11,7 @@ def info():
     "time": time.ctime(),
     "hostname": socket.gethostname(),
     "env": "dev",
-    "message": "Hi Pranav!"
+    "message": "Hi Pranav! How are you?"
 
   })  
 
