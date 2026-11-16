@@ -2,7 +2,7 @@ replicaCount: 1
 image:
   repository: aumthakkar/py9app
   pullPolicy: IfNotPresent
-  tag: "3423e9"
+  tag: "0c8efe"
 serviceAccount:
   create: false
 service:
